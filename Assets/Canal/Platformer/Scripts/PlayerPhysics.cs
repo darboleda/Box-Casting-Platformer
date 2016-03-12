@@ -10,6 +10,7 @@ public class PlayerPhysics : MonoBehaviour {
         public GameObject Floor;
         public Vector3 FloorVector;
         public Vector3 PositionRelative;
+        public Vector3 FloorPositionOnHit;
     }
 
     public float WalkSpeed = 5f;
@@ -31,6 +32,11 @@ public class PlayerPhysics : MonoBehaviour {
     private bool onGround;
 
     private FloorInfo floor;
+
+    public void Awake()
+    {
+        //UpdateOrderController.Controller.RegisterFixedUpdate(this, _FixedUpdate, 1000);
+    }
 
     public void Update()
     {
@@ -65,26 +71,20 @@ public class PlayerPhysics : MonoBehaviour {
 
     }
 
-    public void LateUpdate()
+    private void MoveWithFloor()
     {
-        // Move along with the floor
         if (onGround && floor.Floor != null)
         {
-            Vector3 correctedDelta = (floor.Floor.transform.position + floor.PositionRelative) - transform.position;
 
-            FloorInfo? info;
-            correctedDelta = DetectFloor(correctedDelta, out info);
-            floor = info ?? default(FloorInfo);
-            if(floor.Floor != null)
-            {
-                floor.PositionRelative = (transform.position + correctedDelta) - floor.Floor.transform.position;
-            }
+            Vector3 correctedDelta = floor.Floor.transform.position - floor.FloorPositionOnHit;
             transform.Translate(correctedDelta);
         }
     }
 
     public void FixedUpdate()
     {
+        MoveWithFloor();
+
         velocity += transform.TransformVector(Vector3.down * Gravity) * Time.deltaTime;
         velocity.x = CalculateWalkSpeed(velocity.x, targetXvel);
 
@@ -167,7 +167,8 @@ public class PlayerPhysics : MonoBehaviour {
                 info = new FloorInfo()
                 {
                     Floor = hit.collider.gameObject,
-                    FloorVector = v
+                    FloorVector = v,
+                    FloorPositionOnHit = hit.collider.transform.position
                 };
             }
             else
