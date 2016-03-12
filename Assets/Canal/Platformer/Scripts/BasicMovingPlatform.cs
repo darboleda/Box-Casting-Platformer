@@ -35,9 +35,16 @@ public class BasicMovingPlatform : MonoBehaviour
         get { return transform.position - previousPosition; }
     }
 
+    private Quaternion previousRotation;
+    public Quaternion RotationDelta
+    {
+        get { return Quaternion.Inverse(previousRotation) * transform.rotation; }
+    }
+
     public void FixedUpdate()
     {
         previousPosition = transform.position;
+        previousRotation = transform.rotation;
         float currentTime = Time.time - startTime;
 
         float normalized = currentTime / Duration;
@@ -66,6 +73,8 @@ public class BasicMovingPlatform : MonoBehaviour
 
     private void SetPosition(float t)
     {
+        if (Center == null) return;
+
         Vector3 position = Center.position;
         float x = Radius * Mathf.Cos((Offset + t) * Mathf.PI * 2);
         float y = Radius * Mathf.Sin((Offset + t) * Mathf.PI * 2);

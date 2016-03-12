@@ -227,14 +227,16 @@ public class PlayerPhysics : MonoBehaviour {
 
         BasicMovingPlatform moving = hit.collider.gameObject.GetComponentInParent<BasicMovingPlatform>();
         Vector3 platformDelta = (moving != null ? moving.Delta : Vector3.zero);
+        Quaternion rotationDelta = (moving != null ? moving.RotationDelta : Quaternion.identity);
 
         return onGround
                && delta.y <= 0                                                                                                                 // We're moving downward
                && (distance <= 0                                                                                                               // We're either going down a slope
-                   || Vector3.Dot(Vector3.Cross(currentPosition - (hit.point - platformDelta), cross),                                                           // Or we're starting from a position on the same side of the slope as its normal
+                   || Vector3.Dot(Vector3.Cross(currentPosition - Quaternion.Inverse(rotationDelta) * (hit.point - platformDelta), cross),                                                           // Or we're starting from a position on the same side of the slope as its normal
                                   Vector3.Cross(hit.normal, cross)) >= -0.005f
                    || Vector3.Dot(Vector3.Cross(currentPosition + floor.FloorVector * delta.x * (1 / floor.FloorVector.x) - hit.point, cross), // Or our expected position as modified by the floor's angle is on the same side of the slope as its normal
-                                  Vector3.Cross(hit.normal, cross)) >= -0.005f);
+                                  Vector3.Cross(hit.normal, cross)) >= -0.005f
+                   || rotationDelta != Quaternion.identity);
     }
 
     private float CalculateWalkSpeed(float currentSpeed, float targetSpeed)
