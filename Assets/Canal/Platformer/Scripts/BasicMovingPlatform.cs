@@ -20,12 +20,9 @@ public class BasicMovingPlatform : MonoBehaviour
     public Transform Center;
     public WrapBehavior Wrap;
 
-    private float startTime;
+    public float RotationSpeed;
 
-    public void Awake()
-    {
-        //UpdateOrderController.Controller.RegisterFixedUpdate(this, _FixedUpdate);
-    }
+    private float startTime;
 
     public void OnEnable()
     {
@@ -63,6 +60,8 @@ public class BasicMovingPlatform : MonoBehaviour
         {
             SetPosition(loopTime);
         }
+
+        transform.Rotate(Vector3.forward * RotationSpeed * Time.deltaTime, Space.Self);
     }
 
     private void SetPosition(float t)

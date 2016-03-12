@@ -10,7 +10,9 @@ public class PlayerPhysics : MonoBehaviour {
         public GameObject Floor;
         public Vector3 FloorVector;
         public Vector3 PositionRelative;
+        public Raycaster Caster;
         public Vector3 FloorPositionOnHit;
+        public Quaternion FloorRotationOnHit;
     }
 
     public float WalkSpeed = 5f;
@@ -32,11 +34,6 @@ public class PlayerPhysics : MonoBehaviour {
     private bool onGround;
 
     private FloorInfo floor;
-
-    public void Awake()
-    {
-        //UpdateOrderController.Controller.RegisterFixedUpdate(this, _FixedUpdate, 1000);
-    }
 
     public void Update()
     {
@@ -76,7 +73,35 @@ public class PlayerPhysics : MonoBehaviour {
         if (onGround && floor.Floor != null)
         {
 
-            Vector3 correctedDelta = floor.Floor.transform.position - floor.FloorPositionOnHit;
+            var floorTransform = floor.Floor.transform;
+
+            // translate to match floor position
+            Vector3 correctedDelta = floorTransform.position - floor.FloorPositionOnHit;
+            transform.Translate(correctedDelta);
+
+            // translate to match floor rotation
+            if (floorTransform.rotation == floor.FloorRotationOnHit) return;
+
+            var rotation = Quaternion.Inverse(floor.FloorRotationOnHit) * floorTransform.rotation;
+            var casterPos = floor.PositionRelative + (floor.Caster.Position - transform.position);
+            var casterDelta = rotation * casterPos - casterPos;
+            
+            foreach (var raycaster in FloorRays)
+            {
+                var pos = floor.PositionRelative + (raycaster.Position - transform.position);
+                var delta = rotation * pos - pos;
+
+                if (delta.y > casterDelta.y) casterDelta = delta;
+            }
+
+            FloorInfo? info;
+            correctedDelta = DetectFloor(casterDelta, out info);
+            floor = info ?? default(FloorInfo);
+            if (floor.Floor != null)
+            {
+                floor.PositionRelative = (transform.position + correctedDelta) - floor.Floor.transform.position;
+            }
+
             transform.Translate(correctedDelta);
         }
     }
@@ -168,7 +193,9 @@ public class PlayerPhysics : MonoBehaviour {
                 {
                     Floor = hit.collider.gameObject,
                     FloorVector = v,
-                    FloorPositionOnHit = hit.collider.transform.position
+                    FloorPositionOnHit = hit.collider.transform.position,
+                    FloorRotationOnHit = hit.collider.transform.rotation,
+                    Caster = caster
                 };
             }
             else
@@ -204,7 +231,6 @@ public class PlayerPhysics : MonoBehaviour {
         return onGround
                && delta.y <= 0                                                                                                                 // We're moving downward
                && (distance <= 0                                                                                                               // We're either going down a slope
-//                   || 90 - Vector3.Angle(hit.point - currentPosition, Vector3.up) < 30                                                         // Attempting to move at a shallow angle
                    || Vector3.Dot(Vector3.Cross(currentPosition - (hit.point - platformDelta), cross),                                                           // Or we're starting from a position on the same side of the slope as its normal
                                   Vector3.Cross(hit.normal, cross)) >= -0.005f
                    || Vector3.Dot(Vector3.Cross(currentPosition + floor.FloorVector * delta.x * (1 / floor.FloorVector.x) - hit.point, cross), // Or our expected position as modified by the floor's angle is on the same side of the slope as its normal
