@@ -19,6 +19,8 @@ public class PlayerPhysics : MonoBehaviour {
     public float WalkAcceleration = 1f;
     public float WalkFriction = 5f;
 
+    public float SlopeWalkScaleMinimum = 0.9f;
+
     public float JumpHeight = 3f;
 
     public float Gravity = 9.8f;
@@ -240,6 +242,17 @@ public class PlayerPhysics : MonoBehaviour {
     }
 
     private float CalculateWalkSpeed(float currentSpeed, float targetSpeed)
+    {
+        float expected = CalculateExpectedWalkSpeed(currentSpeed, targetSpeed);
+        if (onGround)
+        {
+            Debug.Log(floor.FloorVector.x);
+            return Mathf.Clamp(Mathf.Abs(floor.FloorVector.x), SlopeWalkScaleMinimum, 1) * expected;
+        }
+        return expected;
+    }
+
+    private float CalculateExpectedWalkSpeed(float currentSpeed, float targetSpeed)
     {
         float speedDelta = targetSpeed - currentSpeed;
         if (Mathf.Abs(speedDelta) < 0.01f)
