@@ -14,7 +14,7 @@ public class BasicMovingPlatform : MonoBehaviour
 
     public Rigidbody Rigidbody;
 
-    public float Duration;
+    public float OrbitsPerSecond;
     public float Radius;
     public float Offset;
     public Transform Center;
@@ -47,38 +47,38 @@ public class BasicMovingPlatform : MonoBehaviour
         previousRotation = transform.rotation;
         float currentTime = Time.time - startTime;
 
-        float normalized = currentTime / Duration;
+        float normalized = currentTime * OrbitsPerSecond;
         int loopCount = Mathf.FloorToInt(normalized);
         float loopTime = normalized - loopCount;
 
         if (Wrap == WrapBehavior.Hold && loopCount > 0)
         {
-            SetPosition(1);
+            Rigidbody.velocity = ((Vector3)EvaluatePosition(1) - transform.position) / Time.deltaTime;
         }
         else if (Wrap == WrapBehavior.Reset && loopCount > 0)
         {
-            SetPosition(0);
+            Rigidbody.velocity = ((Vector3)EvaluatePosition(0) - transform.position) / Time.deltaTime;
         }
         else if (Wrap == WrapBehavior.PingPong)
         {
-            SetPosition(Mathf.PingPong(normalized, 1));
+            Rigidbody.velocity = ((Vector3)EvaluatePosition(Mathf.PingPong(normalized, 1)) - transform.position) / Time.deltaTime;
         }
         else
         {
-            SetPosition(loopTime);
+            Rigidbody.velocity = ((Vector3)EvaluatePosition(loopTime) - transform.position) / Time.deltaTime;
         }
 
-        transform.Rotate(Vector3.forward * RotationSpeed * Time.deltaTime, Space.Self);
+        Rigidbody.angularVelocity = Vector3.forward * Mathf.Deg2Rad * RotationSpeed;
     }
 
-    private void SetPosition(float t)
+    private Vector2 EvaluatePosition(float t)
     {
-        if (Center == null) return;
+        if (Center == null) return transform.position;
 
         Vector3 position = Center.position;
         float x = Radius * Mathf.Cos((Offset + t) * Mathf.PI * 2);
         float y = Radius * Mathf.Sin((Offset + t) * Mathf.PI * 2);
 
-        transform.position = (new Vector3(position.x + x, position.y + y, position.z));
+        return new Vector3(position.x + x, position.y + y, position.z);
     }
 }

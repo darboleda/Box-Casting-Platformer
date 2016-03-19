@@ -52,7 +52,7 @@ public class PlayerPhysics : MonoBehaviour {
         {
             if (Input.GetAxisRaw("Vertical") < 0 && onGround)
             {
-                transform.Translate(Vector3.down * 0.1f);
+                transform.Translate(Vector3.down * 0.15f);
                 velocity.y = -3;
                 onGround = false;
                 if (breakOnDrop) Debug.Break();
@@ -76,41 +76,25 @@ public class PlayerPhysics : MonoBehaviour {
         {
 
             var floorTransform = floor.Floor.transform;
+            var rigidbody = floor.Floor.GetComponent<Collider>().attachedRigidbody;
+            if (rigidbody == null) return;
 
             // translate to match floor position
-            Vector3 correctedDelta = floorTransform.position - floor.FloorPositionOnHit;
+            Vector3 correctedDelta = rigidbody.velocity * Time.deltaTime;
             transform.Translate(correctedDelta);
 
             // translate to match floor rotation
-            if (floorTransform.rotation == floor.FloorRotationOnHit) return;
+            if (rigidbody.angularVelocity == Vector3.zero) return;
 
-            var rotation = Quaternion.Inverse(floor.FloorRotationOnHit) * floorTransform.rotation;
+            var rotation = Quaternion.Euler(rigidbody.angularVelocity * Mathf.Rad2Deg * Time.deltaTime);
             var casterPos = floor.PositionRelative + (floor.Caster.Position - transform.position);
             var casterDelta = rotation * casterPos - casterPos;
-            
-            foreach (var raycaster in FloorRays)
-            {
-                var pos = floor.PositionRelative + (raycaster.Position - transform.position);
-                var delta = rotation * pos - pos;
-
-                if (delta.y > casterDelta.y) casterDelta = delta;
-            }
-
-            FloorInfo? info;
-            correctedDelta = DetectFloor(casterDelta, out info);
-            floor = info ?? default(FloorInfo);
-            if (floor.Floor != null)
-            {
-                floor.PositionRelative = (transform.position + correctedDelta) - floor.Floor.transform.position;
-            }
-
-            transform.Translate(correctedDelta);
+            transform.Translate(casterDelta);
         }
     }
 
     public void FixedUpdate()
     {
-        MoveWithFloor();
 
         velocity += transform.TransformVector(Vector3.down * Gravity) * Time.deltaTime;
         velocity.x = CalculateWalkSpeed(velocity.x, targetXvel);
@@ -139,6 +123,8 @@ public class PlayerPhysics : MonoBehaviour {
         }
 
         transform.Translate(correctedDelta);
+
+        MoveWithFloor();
     }
 
     private void Jump(float height)
@@ -214,12 +200,12 @@ public class PlayerPhysics : MonoBehaviour {
         Vector3 cross = Vector3.Cross(Vector3.forward, hit.normal);
 
         BasicMovingPlatform moving = hit.collider.gameObject.GetComponentInParent<BasicMovingPlatform>();
-        Vector3 platformDelta = (moving != null ? moving.Delta : Vector3.zero);
+        Vector3 platformDelta = (moving != null ? moving.Rigidbody.velocity * Time.deltaTime : Vector3.zero);
 
         return hit.point.y > expectedPosition.y                                                                               // We expected to be below the point that we hit
                && (hit.point.y <= currentPosition.y                                                                           // Our current position is above the hit point after the x is applied
                    || Vector3.Dot(Vector3.Cross(currentPosition - (hit.point - platformDelta), cross),                                                           // Or we're starting from a position on the same side of the slope as its normal
-                                  Vector3.Cross(hit.normal, cross)) >= -0.005f
+                                  Vector3.Cross(hit.normal, cross)) >= -0.1f
                    || currentPositionHits.Where(x => x.collider == hit.collider && x.point.y <= currentPosition.y).Any());    // Or our current position is above the hit point before the x is applied
     }
 
@@ -246,7 +232,6 @@ public class PlayerPhysics : MonoBehaviour {
         float expected = CalculateExpectedWalkSpeed(currentSpeed, targetSpeed);
         if (onGround)
         {
-            Debug.Log(floor.FloorVector.x);
             return Mathf.Clamp(Mathf.Abs(floor.FloorVector.x), SlopeWalkScaleMinimum, 1) * expected;
         }
         return expected;
